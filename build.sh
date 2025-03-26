@@ -41,18 +41,12 @@ MESA_REL=4
 MESA_URL=${GITHUB}/cwt-vf2/mesa-pvr-vf2/releases/download/v${MESA_VER}-${MESA_REL}
 MESA_PKG=mesa-pvr-vf2-${MESA_VER}-${MESA_REL}-riscv64.pkg.tar.zst
 
-# WiFi and Bluetooth Firmware
-BUILDROOT=${DATA}/buildroot
-BUILDROOT_GIT=${GITHUB}/starfive-tech/buildroot.git
-WIFI_BT_FW_PATH=package/starfive/starfive-firmware
-
 # Wave5 Firmware
 WAVE5_FW=https://gitlab.collabora.com/chipsnmedia/linux-firmware/-/raw/cnm/cnm/wave511_dec_fw.bin
 
 # Target packages
-PACKAGES="base btrfs-progs chrony clinfo compsize dosfstools mtd-utils networkmanager openssh rng-tools\
-          smartmontools sudo terminus-font vi vulkan-tools wireless-regdb zram-generator zstd iptables-nft\
-	  linux-firmware apparmor python-notify2 python-psutil"
+PACKAGES="base base-devel btrfs-progs chrony clinfo compsize dosfstools mtd-utils openssh rng-tools\
+          sudo terminus-font neovim git wget vulkan-tools dhcpcd zram-generator zstd linux-firmware"
 
 ## End configuration section ##
 
@@ -98,14 +92,6 @@ ${WGET} ${PKGS}/${GPU_PKG} ${GPU_URL}/${GPU_PKG}
 
 # Download Mesa
 ${WGET} ${PKGS}/${MESA_PKG} ${MESA_URL}/${MESA_PKG}
-
-# Download WiFi Firmware
-rm -rf ${BUILDROOT}
-cd ${DATA}
-git clone -n --depth=1 --filter=tree:0 -b ${SF_TAG} ${BUILDROOT_GIT}
-cd ${BUILDROOT}
-git sparse-checkout set --no-cone ${WIFI_BT_FW_PATH}
-git checkout
 
 # Download Wave5 Firmware
 cd ${DATA}
@@ -176,18 +162,6 @@ sudo arch-chroot ${TARGET} pacman -S ${PACKAGES} --needed --noconfirm --ask=4
 sudo arch-chroot ${TARGET} bash -c "pacman -U /root/pkgs/*.pkg.tar.zst --noconfirm"
 sudo arch-chroot ${TARGET} pacman -Sc --noconfirm
 
-# Install WiFi Firmware
-sudo install -o root -g root -D -m 644 ${BUILDROOT}/${WIFI_BT_FW_PATH}/ECR6600U-usb-wifi/ECR6600U_transport.bin ${TARGET}/usr/lib/firmware/ECR6600U_transport.bin
-sudo install -o root -g root -D -m 644 ${BUILDROOT}/${WIFI_BT_FW_PATH}/aic8800-usb-wifi/aic8800/* -t ${TARGET}/usr/lib/firmware/aic8800
-sudo install -o root -g root -D -m 644 ${BUILDROOT}/${WIFI_BT_FW_PATH}/aic8800-usb-wifi/aic8800DC/* -t ${TARGET}/usr/lib/firmware/aic8800DC
-sudo install -o root -g root -D -m 644 ${BUILDROOT}/${WIFI_BT_FW_PATH}/ap6256-sdio-wifi/* -t ${TARGET}/usr/lib/firmware
-sudo install -o root -g root -D -m 644 ${BUILDROOT}/${WIFI_BT_FW_PATH}/ap6256-sdio-wifi/* -t ${TARGET}/usr/lib/firmware
-
-# Install Bluetooth Firmware
-sudo install -o root -g root -D -m 644 ${BUILDROOT}/${WIFI_BT_FW_PATH}/ap6256-bluetooth/BCM4345C5.hcd -t ${TARGET}/usr/lib/firmware
-sudo install -o root -g root -D -m 755 ${BUILDROOT}/${WIFI_BT_FW_PATH}/ap6256-bluetooth/S36ap6256-bluetooth -t ${TARGET}/etc/init.d
-sudo install -o root -g root -D -m 644 ${BUILDROOT}/${WIFI_BT_FW_PATH}/rtl8852bu-bluetooth/* -t ${TARGET}/usr/lib/firmware
-
 # Install Wave5 Firmware
 sudo install -o root -g root -D -m 644 ${DATA}/wave511_dec_fw.bin -t ${TARGET}/usr/lib/firmware
 
@@ -204,7 +178,7 @@ sudo arch-chroot ${TARGET} /bin/bash -c "echo 'user:user' | chpasswd -c SHA512"
 sudo arch-chroot ${TARGET} /bin/bash -c "echo 'user ALL=(ALL:ALL) NOPASSWD: ALL' > /etc/sudoers.d/user"
 
 # Enable services
-SERVICES="NetworkManager chronyd rngd smartd sshd apparmor"
+SERVICES="chronyd rngd"
 for service in ${SERVICES}; do
 	sudo arch-chroot ${TARGET} systemctl enable ${service}
 done
